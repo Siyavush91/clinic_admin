@@ -1,18 +1,17 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import get_user_model
-from .serializers import UserSerializer, UserRegistrationSerializer
-from .permissions import IsAdmin
-from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import get_user_model, authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
-from .forms import UserRegistrationForm, UserEditForm
+from django.shortcuts import render, redirect
+from .serializers import UserSerializer, PatientRegistrationSerializer, StaffRegistrationSerializer
+from .permissions import IsAdmin
+from .forms import PatientRegistrationForm, StaffRegistrationForm, UserEditForm
 from .models import CustomUser
 
 User = get_user_model()
@@ -29,7 +28,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return UserRegistrationSerializer
+            return PatientRegistrationSerializer
         return UserSerializer
 
     @action(detail=False, methods=['post'])
@@ -74,17 +73,32 @@ def login_view(request):
     return render(request, 'users/login.html')
 
 def register_view(request):
-    if request.method == 'POST':
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, 'Account created successfully!')
-            return redirect('profile')
+    if request.user.is_authenticated and request.user.role == 'admin':
+        # Staff registration form for admin
+        if request.method == 'POST':
+            form = StaffRegistrationForm(request.POST)
+            if form.is_valid():
+                user = form.save()
+                messages.success(request, f'Staff member {user.username} registered successfully!')
+                return redirect('profile')
+            else:
+                messages.error(request, 'Please correct the errors below.')
         else:
-            messages.error(request, 'Please correct the errors below.')
+            form = StaffRegistrationForm()
     else:
-        form = UserRegistrationForm()
+        # Patient registration form
+        if request.method == 'POST':
+            form = PatientRegistrationForm(request.POST)
+            if form.is_valid():
+                user = form.save()
+                login(request, user)
+                messages.success(request, 'Account created successfully!')
+                return redirect('profile')
+            else:
+                messages.error(request, 'Please correct the errors below.')
+        else:
+            form = PatientRegistrationForm()
+    
     return render(request, 'users/register.html', {'form': form})
 
 @login_required
@@ -124,4 +138,47 @@ def change_password_view(request):
             messages.error(request, 'Please correct the errors below.')
     else:
         form = PasswordChangeForm(request.user)
-    return render(request, 'users/change_password.html', {'form': form}) 
+    return render(request, 'users/change_password.html', {'form': form})
+
+class PatientRegistrationAPIView(generics.CreateAPIView):
+    serializer_class = PatientRegistrationSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({
+            'message': 'Patient registered successfully',
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role
+            }
+        }, status=status.HTTP_201_CREATED)
+
+class StaffRegistrationAPIView(generics.CreateAPIView):
+    serializer_class = StaffRegistrationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def check_permissions(self, request):
+        if not request.user.is_authenticated or request.user.role != 'admin':
+            self.permission_denied(request)
+        return super().check_permissions(request)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({
+            'message': 'Staff member registered successfully',
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role
+            }
+        }, status=status.HTTP_201_CREATED) 
