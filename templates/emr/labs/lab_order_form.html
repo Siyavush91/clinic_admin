@@ -1,0 +1,438 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}
+{% if lab_order %}Edit Lab Order #{{ lab_order.id }}{% else %}New Lab Order{% endif %} - Clinic EMR
+{% endblock %}
+
+{% block page_title %}
+{% if lab_order %}Edit Lab Order #{{ lab_order.id }}{% else %}New Lab Order{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            {% if lab_order %}Edit Lab Order{% else %}New Lab Order{% endif %}
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="post" id="labOrderForm">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Patient Information</h5>
+                    {% if patient %}
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Patient</th>
+                            <td>
+                                <a href="{% url 'emr:patient_detail' patient.id %}">
+                                    {{ patient.full_name }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Patient ID</th>
+                            <td>{{ patient.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date of Birth</th>
+                            <td>{{ patient.date_of_birth|date:"F d, Y" }} ({{ patient.age }} years)</td>
+                        </tr>
+                        <tr>
+                            <th>Gender</th>
+                            <td>{{ patient.get_gender_display }}</td>
+                        </tr>
+                    </table>
+                    {{ form.patient.as_hidden }}
+                    {% else %}
+                    <div class="form-group mb-3">
+                        <label for="{{ form.patient.id_for_label }}" class="form-label">Patient*</label>
+                        {{ form.patient }}
+                        {% if form.patient.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.patient.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Select the patient for this lab order</div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if visit %}
+                <div class="col-md-6">
+                    <h5 class="mb-3">Visit Information</h5>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Visit ID</th>
+                            <td>
+                                <a href="{% url 'emr:visit_detail' visit.id %}">
+                                    Visit #{{ visit.id }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Visit Date</th>
+                            <td>{{ visit.date|date:"F d, Y" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Reason</th>
+                            <td>{{ visit.reason }}</td>
+                        </tr>
+                        <tr>
+                            <th>Doctor</th>
+                            <td>Dr. {{ visit.doctor }}</td>
+                        </tr>
+                    </table>
+                    {{ form.visit.as_hidden }}
+                </div>
+                {% else %}
+                <div class="col-md-6">
+                    <h5 class="mb-3">Visit Information (Optional)</h5>
+                    <div class="form-group mb-3">
+                        <label for="{{ form.visit.id_for_label }}" class="form-label">Associated Visit</label>
+                        {{ form.visit }}
+                        {% if form.visit.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.visit.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Select a visit to associate with this lab order (optional)</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.doctor.id_for_label }}" class="form-label">Ordering Doctor*</label>
+                        {{ form.doctor }}
+                        {% if form.doctor.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.doctor.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.priority.id_for_label }}" class="form-label">Priority*</label>
+                        {{ form.priority }}
+                        {% if form.priority.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.priority.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">Status*</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.status.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.order_date.id_for_label }}" class="form-label">Order Date*</label>
+                        {{ form.order_date }}
+                        {% if form.order_date.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.order_date.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.diagnosis.id_for_label }}" class="form-label">Diagnosis (Optional)</label>
+                        {{ form.diagnosis }}
+                        {% if form.diagnosis.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.diagnosis.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Enter the diagnosis or reason for this test order</div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.clinical_notes.id_for_label }}" class="form-label">Clinical Notes (Optional)</label>
+                        {{ form.clinical_notes }}
+                        {% if form.clinical_notes.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.clinical_notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Add any clinical notes or special instructions</div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <h5 class="mb-3">Selected Lab Tests</h5>
+            <div class="form-group mb-4">
+                <label class="form-label">Tests to Order*</label>
+                {{ form.ordered_tests }}
+                {% if form.ordered_tests.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.ordered_tests.errors %}
+                    {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="form-text text-muted">Select all tests to include in this order. Hold Ctrl/Cmd to select multiple.</div>
+            </div>
+            
+            <div class="card mb-4" id="selectedTestsCard">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Selected Tests Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="selectedTestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Test Name</th>
+                                    <th>Sample Type</th>
+                                    <th>Normal Range</th>
+                                    <th>Special Instructions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="no-tests-row">
+                                    <td colspan="4" class="text-center text-muted">No tests selected yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Common Test Panels</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary btn-block w-100 mb-2" id="basicPanel">
+                                Basic Metabolic Panel
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary btn-block w-100 mb-2" id="cmpPanel">
+                                Comprehensive Metabolic Panel
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary btn-block w-100 mb-2" id="cbcPanel">
+                                Complete Blood Count
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary btn-block w-100 mb-2" id="lipidPanel">
+                                Lipid Panel
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary btn-block w-100 mb-2" id="thyroidPanel">
+                                Thyroid Panel
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary btn-block w-100 mb-2" id="urinalysisPanel">
+                                Urinalysis
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end mt-4">
+                {% if lab_order %}
+                <a href="{% url 'emr:lab_order_detail' lab_order.id %}" class="btn btn-secondary me-2">Cancel</a>
+                {% elif visit %}
+                <a href="{% url 'emr:visit_detail' visit.id %}" class="btn btn-secondary me-2">Cancel</a>
+                {% elif patient %}
+                <a href="{% url 'emr:patient_detail' patient.id %}" class="btn btn-secondary me-2">Cancel</a>
+                {% else %}
+                <a href="{% url 'emr:lab_orders_list' %}" class="btn btn-secondary me-2">Cancel</a>
+                {% endif %}
+                
+                <button type="submit" class="btn btn-primary">
+                    {% if lab_order %}Update{% else %}Create{% endif %} Lab Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default order date to today if creating new order
+        {% if not lab_order %}
+        const dateInput = document.getElementById('{{ form.order_date.id_for_label }}');
+        if (dateInput && !dateInput.value) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+        {% endif %}
+        
+        // Handle patient selection changes
+        {% if not patient %}
+        const patientSelect = document.getElementById('{{ form.patient.id_for_label }}');
+        const visitSelect = document.getElementById('{{ form.visit.id_for_label }}');
+        
+        if (patientSelect && visitSelect) {
+            patientSelect.addEventListener('change', function() {
+                const patientId = this.value;
+                if (patientId) {
+                    // Fetch available visits for this patient via AJAX
+                    fetch(`/emr/api/patients/${patientId}/visits/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Clear existing options
+                            visitSelect.innerHTML = '<option value="">---------</option>';
+                            
+                            // Add new options
+                            data.visits.forEach(visit => {
+                                const option = document.createElement('option');
+                                option.value = visit.id;
+                                option.textContent = `Visit #${visit.id} (${visit.date})`;
+                                visitSelect.appendChild(option);
+                            });
+                        });
+                }
+            });
+        }
+        {% endif %}
+        
+        // Common test panels
+        const testSelector = document.getElementById('{{ form.ordered_tests.id_for_label }}');
+        
+        // Define test IDs for each panel
+        const panels = {
+            'basicPanel': [1, 2, 3, 4, 5, 6, 7, 8], // Example IDs for Basic Metabolic Panel
+            'cmpPanel': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], // Example IDs for CMP
+            'cbcPanel': [15, 16, 17, 18, 19, 20], // Example IDs for CBC
+            'lipidPanel': [21, 22, 23, 24], // Example IDs for Lipid Panel
+            'thyroidPanel': [25, 26, 27], // Example IDs for Thyroid Panel
+            'urinalysisPanel': [28, 29, 30, 31, 32] // Example IDs for Urinalysis
+        };
+        
+        // Add click handlers for panel buttons
+        Object.keys(panels).forEach(panelId => {
+            const panelButton = document.getElementById(panelId);
+            if (panelButton) {
+                panelButton.addEventListener('click', function() {
+                    // Select all tests in this panel
+                    for (let i = 0; i < testSelector.options.length; i++) {
+                        const option = testSelector.options[i];
+                        if (panels[panelId].includes(parseInt(option.value))) {
+                            option.selected = true;
+                        }
+                    }
+                    
+                    // Trigger change event to update the selected tests table
+                    const event = new Event('change');
+                    testSelector.dispatchEvent(event);
+                });
+            }
+        });
+        
+        // Update selected tests table when test selection changes
+        if (testSelector) {
+            const selectedTestsTable = document.getElementById('selectedTestsTable').getElementsByTagName('tbody')[0];
+            
+            testSelector.addEventListener('change', function() {
+                // Clear the table
+                selectedTestsTable.innerHTML = '';
+                
+                // Get selected options
+                const selectedOptions = Array.from(this.selectedOptions);
+                
+                if (selectedOptions.length === 0) {
+                    // No tests selected
+                    const row = document.createElement('tr');
+                    row.className = 'no-tests-row';
+                    row.innerHTML = '<td colspan="4" class="text-center text-muted">No tests selected yet</td>';
+                    selectedTestsTable.appendChild(row);
+                } else {
+                    // Add a row for each selected test
+                    selectedOptions.forEach(option => {
+                        const testId = option.value;
+                        const testName = option.textContent;
+                        
+                        // In a real app, you would fetch the test details via AJAX or have them pre-loaded
+                        // For this template, we'll use placeholder data
+                        fetch(`/emr/api/lab-tests/${testId}/details/`)
+                            .then(response => response.json())
+                            .then(test => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${test.name}</td>
+                                    <td>${test.sample_type}</td>
+                                    <td>${test.normal_range}</td>
+                                    <td>${test.special_instructions || 'None'}</td>
+                                `;
+                                selectedTestsTable.appendChild(row);
+                            })
+                            .catch(() => {
+                                // Fallback if API call fails
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${testName}</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                `;
+                                selectedTestsTable.appendChild(row);
+                            });
+                    });
+                }
+            });
+            
+            // Trigger change event to initialize the table
+            const event = new Event('change');
+            testSelector.dispatchEvent(event);
+        }
+    });
+</script>
+{% endblock %} 

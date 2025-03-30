@@ -1,0 +1,289 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}Patient Dashboard - Clinic EMR{% endblock %}
+
+{% block page_title %}My Health Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Overview stats -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Upcoming Appointments</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ upcoming_visits_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Active Medications</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_medications_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-pills fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Pending Lab Tests</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_lab_tests_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-flask fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Medical Records</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ medical_records_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-medical fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming Appointments & My Medications -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Upcoming Appointments</h6>
+                <a href="{% url 'emr:patient_visits' %}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if upcoming_visits %}
+                <div class="list-group">
+                    {% for visit in upcoming_visits %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ visit.visit_date|date:"l, F j, Y" }}</h5>
+                            <small>{{ visit.visit_date|date:"H:i" }}</small>
+                        </div>
+                        <p class="mb-1"><strong>Doctor:</strong> {{ visit.doctor }}</p>
+                        <p class="mb-1"><strong>Department:</strong> {{ visit.department }}</p>
+                        <p class="mb-1"><strong>Reason:</strong> {{ visit.reason|truncatechars:100 }}</p>
+                        <div class="mt-2">
+                            <span class="badge bg-primary">{{ visit.get_status_display }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center my-4 py-4">
+                    <i class="fas fa-calendar-check fa-3x mb-3 text-muted"></i>
+                    <p>You don't have any upcoming appointments.</p>
+                    <a href="#" class="btn btn-primary">Schedule an Appointment</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">My Medications</h6>
+                <a href="{% url 'emr:patient_prescriptions' %}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if active_medications %}
+                <div class="list-group">
+                    {% for prescription in active_medications %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ prescription.medication.name }}</h5>
+                            <small>{{ prescription.start_date|date:"M d, Y" }}</small>
+                        </div>
+                        <p class="mb-1"><strong>Dosage:</strong> {{ prescription.dosage }}</p>
+                        <p class="mb-1"><strong>Frequency:</strong> {{ prescription.frequency }}</p>
+                        <p class="mb-1"><strong>Duration:</strong> {{ prescription.duration }}</p>
+                        {% if prescription.instructions %}
+                        <p class="mb-1"><strong>Instructions:</strong> {{ prescription.instructions }}</p>
+                        {% endif %}
+                        <div class="mt-2">
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center my-4 py-4">
+                    <i class="fas fa-prescription-bottle fa-3x mb-3 text-muted"></i>
+                    <p>You don't have any active medications.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Latest Lab Results & Health Records -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Latest Lab Results</h6>
+                <a href="{% url 'emr:patient_lab_results' %}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if latest_lab_results %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Test</th>
+                                <th>Result</th>
+                                <th>Normal Range</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in latest_lab_results %}
+                            <tr {% if result.is_abnormal %}class="table-danger"{% endif %}>
+                                <td>{{ result.lab_test.name }}</td>
+                                <td><strong>{{ result.value }} {{ result.lab_test.unit }}</strong></td>
+                                <td>{{ result.lab_test.normal_range }}</td>
+                                <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if result.is_abnormal %}
+                                    <span class="badge bg-danger">Abnormal</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Normal</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center my-4 py-4">
+                    <i class="fas fa-vial fa-3x mb-3 text-muted"></i>
+                    <p>No lab results available.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">My Diagnoses</h6>
+                <a href="{% url 'emr:patient_reports' %}" class="btn btn-sm btn-primary">View All Reports</a>
+            </div>
+            <div class="card-body">
+                {% if recent_diagnoses %}
+                <div class="list-group">
+                    {% for diagnosis in recent_diagnoses %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ diagnosis.diagnosis_name }}</h5>
+                            <small>{{ diagnosis.diagnosis_date|date:"M d, Y" }}</small>
+                        </div>
+                        <p class="mb-1"><strong>Code:</strong> {{ diagnosis.diagnosis_code }}</p>
+                        <p class="mb-1"><strong>Doctor:</strong> {{ diagnosis.doctor }}</p>
+                        <p class="mb-1">{{ diagnosis.description|truncatechars:150 }}</p>
+                        <div class="mt-2">
+                            {% if diagnosis.is_chronic %}
+                            <span class="badge bg-warning">Chronic</span>
+                            {% endif %}
+                            {% if diagnosis.is_primary %}
+                            <span class="badge bg-info">Primary</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center my-4 py-4">
+                    <i class="fas fa-heartbeat fa-3x mb-3 text-muted"></i>
+                    <p>No diagnoses recorded.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Health Tips -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Health Tips</h6>
+            </div>
+            <div class="card-body">
+                <div id="healthTipsCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <div class="d-flex flex-column align-items-center text-center p-4">
+                                <i class="fas fa-heartbeat fa-3x mb-3 text-primary"></i>
+                                <h5>Regular Exercise</h5>
+                                <p>Aim for at least 30 minutes of moderate physical activity most days of the week. It helps maintain a healthy weight and reduces the risk of heart disease.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="d-flex flex-column align-items-center text-center p-4">
+                                <i class="fas fa-apple-alt fa-3x mb-3 text-success"></i>
+                                <h5>Balanced Diet</h5>
+                                <p>Include plenty of fruits, vegetables, whole grains, lean proteins, and healthy fats in your daily diet. Limit processed foods and added sugars.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="d-flex flex-column align-items-center text-center p-4">
+                                <i class="fas fa-bed fa-3x mb-3 text-info"></i>
+                                <h5>Adequate Sleep</h5>
+                                <p>Aim for 7-9 hours of quality sleep each night. Good sleep is crucial for overall health, immune function, and mental well-being.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#healthTipsCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#healthTipsCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,412 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}Lab Order #{{ lab_order.id }} - Clinic EMR{% endblock %}
+
+{% block page_title %}Lab Order #{{ lab_order.id }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'emr:patient_detail' lab_order.patient.id %}" class="btn btn-info">
+        <i class="fas fa-user me-1"></i> Patient Profile
+    </a>
+    <a href="{% url 'emr:lab_orders_list' %}" class="btn btn-secondary">
+        <i class="fas fa-list me-1"></i> All Orders
+    </a>
+    {% if lab_order.status == 'ordered' %}
+        {% if user.role == 'doctor' or user.role == 'admin' %}
+        <a href="{% url 'emr:lab_order_edit' lab_order.id %}" class="btn btn-warning">
+            <i class="fas fa-edit me-1"></i> Edit Order
+        </a>
+        {% endif %}
+        {% if user.role == 'lab_tech' or user.role == 'admin' %}
+        <a href="{% url 'emr:lab_order_update_status' lab_order.id %}?status=in_progress" class="btn btn-primary">
+            <i class="fas fa-flask me-1"></i> Start Processing
+        </a>
+        {% endif %}
+    {% elif lab_order.status == 'in_progress' %}
+        {% if user.role == 'lab_tech' or user.role == 'admin' %}
+        <a href="{% url 'emr:lab_result_create' %}?order={{ lab_order.id }}" class="btn btn-success">
+            <i class="fas fa-plus me-1"></i> Add Results
+        </a>
+        {% endif %}
+    {% endif %}
+    <a href="javascript:window.print();" class="btn btn-outline-secondary">
+        <i class="fas fa-print me-1"></i> Print
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Order Information -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Order Information</h6>
+        <span class="badge 
+            {% if lab_order.status == 'ordered' %}bg-primary
+            {% elif lab_order.status == 'in_progress' %}bg-warning
+            {% elif lab_order.status == 'completed' %}bg-success
+            {% elif lab_order.status == 'cancelled' %}bg-danger
+            {% endif %} py-2 px-3">
+            {{ lab_order.get_status_display }}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3">Patient Information</h5>
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 150px;">Patient</th>
+                        <td>
+                            <a href="{% url 'emr:patient_detail' lab_order.patient.id %}">
+                                {{ lab_order.patient.full_name }}
+                            </a>
+                            <span class="text-muted ms-2">#{{ lab_order.patient.id }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Patient ID</th>
+                        <td>{{ lab_order.patient.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Date of Birth</th>
+                        <td>{{ lab_order.patient.date_of_birth|date:"F d, Y" }} ({{ lab_order.patient.age }} years)</td>
+                    </tr>
+                    <tr>
+                        <th>Gender</th>
+                        <td>{{ lab_order.patient.get_gender_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Contact</th>
+                        <td>{{ lab_order.patient.phone_number }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="col-md-6">
+                <h5 class="mb-3">Order Details</h5>
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 150px;">Order Date</th>
+                        <td>{{ lab_order.order_date|date:"F d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Ordered By</th>
+                        <td>Dr. {{ lab_order.doctor }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status</th>
+                        <td>
+                            <span class="badge 
+                                {% if lab_order.status == 'ordered' %}bg-primary
+                                {% elif lab_order.status == 'in_progress' %}bg-warning
+                                {% elif lab_order.status == 'completed' %}bg-success
+                                {% elif lab_order.status == 'cancelled' %}bg-danger
+                                {% endif %}">
+                                {{ lab_order.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Priority</th>
+                        <td>
+                            {% if lab_order.priority == 'urgent' %}
+                            <span class="badge bg-danger">Urgent</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Routine</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Visit</th>
+                        <td>
+                            {% if lab_order.visit %}
+                            <a href="{% url 'emr:visit_detail' lab_order.visit.id %}">
+                                Visit #{{ lab_order.visit.id }} ({{ lab_order.visit.date|date:"M d, Y" }})
+                            </a>
+                            {% else %}
+                            <span class="text-muted">Not associated with a visit</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        {% if lab_order.clinical_notes %}
+        <div class="alert alert-info mt-3">
+            <h6 class="alert-heading">Clinical Notes</h6>
+            <p>{{ lab_order.clinical_notes }}</p>
+        </div>
+        {% endif %}
+        
+        {% if lab_order.diagnosis %}
+        <div class="alert alert-secondary mt-3">
+            <h6 class="alert-heading">Diagnosis</h6>
+            <p>{{ lab_order.diagnosis }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Ordered Tests -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Ordered Tests</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Test</th>
+                        <th>Sample Type</th>
+                        <th>Status</th>
+                        <th>Result</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test in lab_order.ordered_tests.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <strong>{{ test.name }}</strong>
+                            {% if test.description %}
+                            <i class="fas fa-info-circle text-muted" 
+                               data-bs-toggle="tooltip" 
+                               title="{{ test.description }}"></i>
+                            {% endif %}
+                        </td>
+                        <td>{{ test.sample_type }}</td>
+                        <td>
+                            {% if test.result %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif lab_order.status == 'in_progress' %}
+                                <span class="badge bg-warning">In Progress</span>
+                            {% elif lab_order.status == 'ordered' %}
+                                <span class="badge bg-primary">Ordered</span>
+                            {% elif lab_order.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if test.result %}
+                                <strong class="{% if test.result.is_abnormal %}text-danger{% endif %}">
+                                    {{ test.result.value }} {{ test.unit }}
+                                </strong>
+                                <small class="text-muted d-block">
+                                    {{ test.result.result_date|date:"M d, Y H:i" }}
+                                </small>
+                            {% else %}
+                                <span class="text-muted">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                {% if test.result %}
+                                <a href="{% url 'emr:lab_result_detail' test.result.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% elif lab_order.status == 'in_progress' and user.role == 'lab_tech' %}
+                                <a href="{% url 'emr:lab_result_create' %}?order={{ lab_order.id }}&test={{ test.id }}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-plus"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Lab Results Summary -->
+{% if lab_order.results.exists %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Results Summary</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Test</th>
+                        <th>Result</th>
+                        <th>Normal Range</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in lab_order.results.all %}
+                    <tr class="{% if result.is_abnormal %}table-danger{% endif %}">
+                        <td>{{ result.lab_test.name }}</td>
+                        <td><strong>{{ result.value }} {{ result.lab_test.unit }}</strong></td>
+                        <td>{{ result.lab_test.normal_range }}</td>
+                        <td>
+                            {% if result.is_abnormal %}
+                            <span class="badge bg-danger">Abnormal</span>
+                            {% else %}
+                            <span class="badge bg-success">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ result.result_date|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'emr:lab_result_detail' result.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if user.role == 'doctor' or user.role == 'admin' %}
+                                <a href="{% url 'emr:lab_result_edit' result.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Order History -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Order History</h6>
+    </div>
+    <div class="card-body">
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker bg-primary"></div>
+                <div class="timeline-content">
+                    <h6 class="timeline-title">Order Created</h6>
+                    <p class="timeline-text">
+                        {{ lab_order.order_date|date:"F d, Y H:i" }} by Dr. {{ lab_order.doctor }}
+                    </p>
+                </div>
+            </div>
+            
+            {% if lab_order.status_updates.exists %}
+                {% for update in lab_order.status_updates.all %}
+                <div class="timeline-item">
+                    <div class="timeline-marker 
+                        {% if update.status == 'in_progress' %}bg-warning
+                        {% elif update.status == 'completed' %}bg-success
+                        {% elif update.status == 'cancelled' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                    </div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">{{ update.get_status_display }}</h6>
+                        <p class="timeline-text">
+                            {{ update.update_date|date:"F d, Y H:i" }} by {{ update.updated_by }}
+                            {% if update.notes %}<br>Note: {{ update.notes }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% if lab_order.results.exists %}
+                {% for result in lab_order.results.all %}
+                <div class="timeline-item">
+                    <div class="timeline-marker {% if result.is_abnormal %}bg-danger{% else %}bg-success{% endif %}"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">Result Added: {{ result.lab_test.name }}</h6>
+                        <p class="timeline-text">
+                            {{ result.result_date|date:"F d, Y H:i" }}
+                            <br>Value: {{ result.value }} {{ result.lab_test.unit }}
+                            ({% if result.is_abnormal %}Abnormal{% else %}Normal{% endif %})
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -30px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background-color: #e0e0e0;
+        margin-top: 5px;
+    }
+    
+    .timeline-item:not(:last-child):before {
+        content: '';
+        position: absolute;
+        left: -23.5px;
+        top: 24px;
+        width: 2px;
+        height: calc(100% - 24px);
+        background-color: #e0e0e0;
+    }
+    
+    .timeline-content {
+        padding-bottom: 1rem;
+    }
+    
+    .timeline-title {
+        margin-bottom: 0.25rem;
+    }
+    
+    .timeline-text {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    @media print {
+        .btn-group {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Enable tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // If there are any abnormal results, highlight them for doctors
+        {% if user.role == 'doctor' and lab_order.has_abnormal_results %}
+        setTimeout(function() {
+            window.showNotification('This lab order contains abnormal results that may require your attention.', 'warning');
+        }, 1000);
+        {% endif %}
+    });
+</script>
+{% endblock %} 

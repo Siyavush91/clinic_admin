@@ -1,0 +1,311 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}
+{% if lab_result %}Edit Lab Result - {{ lab_result.lab_test.name }}{% else %}Add Lab Result{% endif %} - Clinic EMR
+{% endblock %}
+
+{% block page_title %}
+{% if lab_result %}Edit Lab Result - {{ lab_result.lab_test.name }}{% else %}Add Lab Result{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">
+            {% if lab_result %}Edit Lab Result{% else %}New Lab Result{% endif %}
+        </h6>
+        {% if lab_order %}
+        <span class="badge {% if lab_order.priority == 'urgent' %}bg-danger{% else %}bg-secondary{% endif %} ms-2">
+            {{ lab_order.get_priority_display }}
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <form method="post" id="labResultForm">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if not lab_result %}
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Order Information</h5>
+                    {% if lab_order %}
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Order #</th>
+                            <td>
+                                <a href="{% url 'emr:lab_order_detail' lab_order.id %}">
+                                    {{ lab_order.id }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Patient</th>
+                            <td>
+                                <a href="{% url 'emr:patient_detail' lab_order.patient.id %}">
+                                    {{ lab_order.patient.full_name }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Order Date</th>
+                            <td>{{ lab_order.order_date|date:"F d, Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Ordered By</th>
+                            <td>Dr. {{ lab_order.doctor }}</td>
+                        </tr>
+                    </table>
+                    
+                    {{ form.lab_order.as_hidden }}
+                    {% else %}
+                    <div class="form-group mb-3">
+                        <label for="{{ form.lab_order.id_for_label }}" class="form-label">Lab Order</label>
+                        {{ form.lab_order }}
+                        {% if form.lab_order.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.lab_order.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Select the lab order this result belongs to</div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6">
+                    <h5 class="mb-3">Test Selection</h5>
+                    {% if lab_order and selected_test %}
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Test</th>
+                            <td>{{ selected_test.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Sample Type</th>
+                            <td>{{ selected_test.sample_type }}</td>
+                        </tr>
+                        <tr>
+                            <th>Normal Range</th>
+                            <td>{{ selected_test.normal_range }}</td>
+                        </tr>
+                        <tr>
+                            <th>Unit</th>
+                            <td>{{ selected_test.unit }}</td>
+                        </tr>
+                    </table>
+                    
+                    {{ form.lab_test.as_hidden }}
+                    {% else %}
+                    <div class="form-group mb-3">
+                        <label for="{{ form.lab_test.id_for_label }}" class="form-label">Lab Test</label>
+                        {{ form.lab_test }}
+                        {% if form.lab_test.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.lab_test.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Select the lab test for this result</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.value.id_for_label }}" class="form-label">Result Value*</label>
+                        {{ form.value }}
+                        {% if form.value.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.value.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">
+                            Enter the numeric result value
+                            {% if lab_result or selected_test %}
+                            (Unit: {{ lab_result.lab_test.unit|default:selected_test.unit }})
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.result_date.id_for_label }}" class="form-label">Result Date*</label>
+                        {{ form.result_date }}
+                        {% if form.result_date.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.result_date.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.is_abnormal.id_for_label }}" class="form-label">Result Status</label>
+                        <div class="form-check">
+                            {{ form.is_abnormal }}
+                            <label class="form-check-label" for="{{ form.is_abnormal.id_for_label }}">
+                                Mark as abnormal result
+                            </label>
+                        </div>
+                        {% if form.is_abnormal.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.is_abnormal.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Check if the result is outside normal range</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="{{ form.comments.id_for_label }}" class="form-label">Comments</label>
+                        {{ form.comments }}
+                        {% if form.comments.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.comments.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Add any relevant notes or observations (optional)</div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="{{ form.performed_by.id_for_label }}" class="form-label">Performed By</label>
+                        {{ form.performed_by }}
+                        {% if form.performed_by.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.performed_by.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text text-muted">Enter the name of the person who performed the test (optional)</div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if lab_result and lab_result.lab_test.interpretation_guide %}
+            <div class="alert alert-info mt-4">
+                <h6 class="alert-heading">Interpretation Guidelines</h6>
+                <p>{{ lab_result.lab_test.interpretation_guide }}</p>
+            </div>
+            {% elif selected_test.interpretation_guide %}
+            <div class="alert alert-info mt-4">
+                <h6 class="alert-heading">Interpretation Guidelines</h6>
+                <p>{{ selected_test.interpretation_guide }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="d-flex justify-content-end mt-4">
+                {% if lab_order %}
+                <a href="{% url 'emr:lab_order_detail' lab_order.id %}" class="btn btn-secondary me-2">Cancel</a>
+                {% elif lab_result %}
+                <a href="{% url 'emr:lab_result_detail' lab_result.id %}" class="btn btn-secondary me-2">Cancel</a>
+                {% else %}
+                <a href="{% url 'emr:lab_orders_list' %}" class="btn btn-secondary me-2">Cancel</a>
+                {% endif %}
+                
+                <button type="submit" class="btn btn-primary">
+                    {% if lab_result %}Update{% else %}Save{% endif %} Lab Result
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Automatically calculate if result is abnormal based on normal range
+        const valueInput = document.getElementById('{{ form.value.id_for_label }}');
+        const abnormalCheck = document.getElementById('{{ form.is_abnormal.id_for_label }}');
+        
+        {% if lab_result or selected_test %}
+        // Get normal range from the lab test
+        const normalRange = '{{ lab_result.lab_test.normal_range|default:selected_test.normal_range }}';
+        
+        if (valueInput && abnormalCheck && normalRange) {
+            valueInput.addEventListener('change', function() {
+                const value = parseFloat(this.value);
+                if (!isNaN(value)) {
+                    // Parse normal range (assuming format like "3.5-5.5" or "> 4.0" or "< 10.0")
+                    if (normalRange.includes('-')) {
+                        const [min, max] = normalRange.split('-').map(v => parseFloat(v.trim()));
+                        abnormalCheck.checked = value < min || value > max;
+                    } else if (normalRange.includes('<')) {
+                        const max = parseFloat(normalRange.replace('<', '').trim());
+                        abnormalCheck.checked = value >= max;
+                    } else if (normalRange.includes('>')) {
+                        const min = parseFloat(normalRange.replace('>', '').trim());
+                        abnormalCheck.checked = value <= min;
+                    }
+                }
+            });
+        }
+        {% endif %}
+        
+        // Set default result date to today if adding new result
+        {% if not lab_result %}
+        const dateInput = document.getElementById('{{ form.result_date.id_for_label }}');
+        if (dateInput && !dateInput.value) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+        {% endif %}
+        
+        // Dynamic lab test selection if lab order is selected
+        {% if not lab_result and not selected_test %}
+        const labOrderSelect = document.getElementById('{{ form.lab_order.id_for_label }}');
+        const labTestSelect = document.getElementById('{{ form.lab_test.id_for_label }}');
+        
+        if (labOrderSelect && labTestSelect) {
+            labOrderSelect.addEventListener('change', function() {
+                const orderId = this.value;
+                if (orderId) {
+                    // Fetch available tests for this order via AJAX
+                    fetch(`/emr/api/lab-orders/${orderId}/available-tests/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Clear existing options
+                            labTestSelect.innerHTML = '<option value="">---------</option>';
+                            
+                            // Add new options
+                            data.tests.forEach(test => {
+                                const option = document.createElement('option');
+                                option.value = test.id;
+                                option.textContent = test.name;
+                                labTestSelect.appendChild(option);
+                            });
+                        });
+                }
+            });
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %} 

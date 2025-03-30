@@ -8,11 +8,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
-from django.shortcuts import render, redirect
-from .serializers import UserSerializer, PatientRegistrationSerializer, StaffRegistrationSerializer
+from django.shortcuts import render, redirect, get_object_or_404
+from .serializers import (
+    UserSerializer, PatientRegistrationSerializer, StaffRegistrationSerializer,
+    PatientDetailSerializer, DoctorDetailSerializer
+)
 from .permissions import IsAdmin
 from .forms import PatientRegistrationForm, StaffRegistrationForm, UserEditForm
 from .models import CustomUser
+from apps.emr.models import Patient, Doctor, Visit, LabOrder, Prescription
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -29,6 +34,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return PatientRegistrationSerializer
+        elif self.action == 'patient_detail':
+            return PatientDetailSerializer
+        elif self.action == 'doctor_detail':
+            return DoctorDetailSerializer
         return UserSerializer
 
     @action(detail=False, methods=['post'])
@@ -58,6 +67,87 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Successfully logged out'})
         except Exception:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    @action(detail=True, methods=['get'])
+    def patient_detail(self, request, pk=None):
+        """Get detailed patient information including EMR profile"""
+        user = self.get_object()
+        if user.role != 'patient':
+            return Response({'error': 'User is not a patient'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = PatientDetailSerializer(user)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def doctor_detail(self, request, pk=None):
+        """Get detailed doctor information including EMR profile"""
+        user = self.get_object()
+        if user.role != 'doctor':
+            return Response({'error': 'User is not a doctor'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = DoctorDetailSerializer(user)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def medical_history(self, request, pk=None):
+        """Get patient's medical history"""
+        user = self.get_object()
+        if user.role != 'patient':
+            return Response({'error': 'User is not a patient'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            patient = user.patient_profile
+            visits = Visit.objects.filter(patient=patient).order_by('-visit_date')
+            
+            history = {
+                'patient_info': {
+                    'name': f"{user.first_name} {user.last_name}",
+                    'dob': user.date_of_birth,
+                    'blood_group': patient.blood_group,
+                    'allergies': patient.allergies,
+                    'chronic_diseases': patient.chronic_diseases
+                },
+                'visits': []
+            }
+            
+            for visit in visits:
+                visit_data = {
+                    'id': visit.id,
+                    'date': visit.visit_date,
+                    'doctor': f"Dr. {visit.doctor.user.first_name} {visit.doctor.user.last_name}",
+                    'reason': visit.reason,
+                    'status': visit.status,
+                    'department': visit.department.name if visit.department else None,
+                    'diagnoses': [
+                        {
+                            'name': diagnosis.diagnosis_name,
+                            'code': diagnosis.diagnosis_code,
+                            'is_chronic': diagnosis.is_chronic
+                        } for diagnosis in visit.diagnoses.all()
+                    ],
+                    'lab_orders': [
+                        {
+                            'id': order.id,
+                            'status': order.status,
+                            'date': order.order_date,
+                            'has_results': order.results.exists()
+                        } for order in visit.lab_orders.all()
+                    ],
+                    'prescriptions': [
+                        {
+                            'medication': prescription.medication.name,
+                            'dosage': prescription.dosage,
+                            'frequency': prescription.frequency,
+                            'duration': prescription.duration,
+                            'status': prescription.status
+                        } for prescription in visit.prescriptions.all()
+                    ]
+                }
+                history['visits'].append(visit_data)
+            
+            return Response(history)
+        except Patient.DoesNotExist:
+            return Response({'error': 'Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
 def login_view(request):
     if request.method == 'POST':
@@ -67,7 +157,16 @@ def login_view(request):
         if user is not None:
             login(request, user)
             messages.success(request, 'Successfully logged in!')
-            return redirect('profile')
+            
+            # Redirect based on user role
+            if user.role == 'patient':
+                return redirect('emr:patient_dashboard')
+            elif user.role == 'doctor':
+                return redirect('emr:doctor_dashboard')
+            elif user.role == 'receptionist':
+                return redirect('appointment_list')
+            else:
+                return redirect('users:profile')
         else:
             messages.error(request, 'Invalid email or password.')
     return render(request, 'users/login.html')
@@ -80,7 +179,7 @@ def register_view(request):
             if form.is_valid():
                 user = form.save()
                 messages.success(request, f'Staff member {user.username} registered successfully!')
-                return redirect('profile')
+                return redirect('users:profile')
             else:
                 messages.error(request, 'Please correct the errors below.')
         else:
@@ -93,7 +192,7 @@ def register_view(request):
                 user = form.save()
                 login(request, user)
                 messages.success(request, 'Account created successfully!')
-                return redirect('profile')
+                return redirect('emr:patient_dashboard')
             else:
                 messages.error(request, 'Please correct the errors below.')
         else:
@@ -105,11 +204,44 @@ def register_view(request):
 def logout_view(request):
     logout(request)
     messages.success(request, 'Successfully logged out!')
-    return redirect('login')
+    return redirect('users:login')
 
 @login_required
 def profile_view(request):
-    return render(request, 'users/profile.html')
+    user = request.user
+    context = {'user': user}
+    
+    if user.role == 'patient':
+        # Get EMR data for patients
+        patient = user.patient_profile
+        visits = Visit.objects.filter(patient=patient).order_by('-visit_date')
+        active_prescriptions = Prescription.objects.filter(
+            patient=patient, status='active'
+        ).order_by('-created_at')
+        
+        context.update({
+            'patient': patient,
+            'recent_visits': visits[:5],
+            'active_prescriptions': active_prescriptions,
+            'lab_orders': LabOrder.objects.filter(patient=patient).order_by('-order_date')[:5]
+        })
+        
+    elif user.role == 'doctor':
+        # Get EMR data for doctors
+        doctor = user.doctor_profile
+        today_appointments = Visit.objects.filter(
+            doctor=doctor, 
+            visit_date__date=timezone.now().date(),
+            status__in=['scheduled', 'in_progress']
+        ).order_by('visit_date')
+        
+        context.update({
+            'doctor': doctor,
+            'today_appointments': today_appointments,
+            'recent_patients': Visit.objects.filter(doctor=doctor).order_by('-visit_date').distinct('patient')[:10]
+        })
+    
+    return render(request, 'users/profile.html', context)
 
 @login_required
 def edit_profile_view(request):
@@ -118,7 +250,7 @@ def edit_profile_view(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully!')
-            return redirect('profile')
+            return redirect('users:profile')
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
@@ -132,8 +264,8 @@ def change_password_view(request):
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)
-            messages.success(request, 'Password changed successfully!')
-            return redirect('profile')
+            messages.success(request, 'Your password was successfully updated!')
+            return redirect('users:profile')
         else:
             messages.error(request, 'Please correct the errors below.')
     else:

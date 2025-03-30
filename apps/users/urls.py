@@ -3,6 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, PatientRegistrationAPIView, StaffRegistrationAPIView
 from . import views
 
+app_name = 'users'
+
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 
@@ -20,6 +22,9 @@ template_urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile_view, name='edit_profile'),
     path('profile/change-password/', views.change_password_view, name='change_password'),
+    path('patient-dashboard/', views.profile_view, name='patient_dashboard'),
+    path('doctor-dashboard/', views.profile_view, name='doctor_dashboard'),
 ]
 
+# Kept for backward compatibility
 urlpatterns = template_urlpatterns 

@@ -1,0 +1,298 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}Lab Result #{{ lab_result.id }} - Clinic EMR{% endblock %}
+
+{% block page_title %}Lab Result: {{ lab_result.lab_test.name }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'emr:lab_order_detail' lab_result.lab_order.id %}" class="btn btn-info">
+        <i class="fas fa-flask me-1"></i> View Order
+    </a>
+    <a href="javascript:window.print();" class="btn btn-secondary">
+        <i class="fas fa-print me-1"></i> Print
+    </a>
+    {% if user.role == 'doctor' or user.role == 'admin' %}
+    <a href="{% url 'emr:lab_result_edit' lab_result.id %}" class="btn btn-warning">
+        <i class="fas fa-edit me-1"></i> Edit
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Lab Result Information -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Lab Result Information</h6>
+        <span class="badge {% if lab_result.is_abnormal %}bg-danger{% else %}bg-success{% endif %} py-2 px-3">
+            {% if lab_result.is_abnormal %}Abnormal{% else %}Normal{% endif %}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 150px;">Test Name</th>
+                        <td><strong>{{ lab_result.lab_test.name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Patient</th>
+                        <td>
+                            <a href="{% url 'emr:patient_detail' lab_result.lab_order.patient.id %}">
+                                {{ lab_result.lab_order.patient }}
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Date Ordered</th>
+                        <td>{{ lab_result.lab_order.order_date|date:"F d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Date Resulted</th>
+                        <td>{{ lab_result.result_date|date:"F d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Ordered By</th>
+                        <td>Dr. {{ lab_result.lab_order.doctor }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 150px;">Value</th>
+                        <td>
+                            <strong class="fs-4 {% if lab_result.is_abnormal %}text-danger{% endif %}">
+                                {{ lab_result.value }} {{ lab_result.lab_test.unit }}
+                            </strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Normal Range</th>
+                        <td>{{ lab_result.lab_test.normal_range }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status</th>
+                        <td>
+                            <span class="badge {% if lab_result.is_abnormal %}bg-danger{% else %}bg-success{% endif %}">
+                                {% if lab_result.is_abnormal %}Abnormal{% else %}Normal{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Method</th>
+                        <td>{{ lab_result.lab_test.method }}</td>
+                    </tr>
+                    <tr>
+                        <th>Sample Type</th>
+                        <td>{{ lab_result.lab_test.sample_type }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        {% if lab_result.comments %}
+        <div class="alert alert-info mt-3">
+            <h6 class="alert-heading">Lab Technician Comments</h6>
+            <p class="mb-0">{{ lab_result.comments }}</p>
+        </div>
+        {% endif %}
+        
+        {% if lab_result.is_abnormal and lab_result.lab_test.abnormal_implication %}
+        <div class="alert alert-warning mt-3">
+            <h6 class="alert-heading">Clinical Implications</h6>
+            <p class="mb-0">{{ lab_result.lab_test.abnormal_implication }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- History / Reference -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Previous Results</h6>
+            </div>
+            <div class="card-body">
+                {% if previous_results %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Value</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in previous_results %}
+                            <tr>
+                                <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <strong class="{% if result.is_abnormal %}text-danger{% endif %}">
+                                        {{ result.value }} {{ result.lab_test.unit }}
+                                    </strong>
+                                </td>
+                                <td>
+                                    {% if result.is_abnormal %}
+                                    <span class="badge bg-danger">Abnormal</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Normal</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No previous results for this test.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Reference Information</h6>
+            </div>
+            <div class="card-body">
+                <h6>About {{ lab_result.lab_test.name }}</h6>
+                <p>{{ lab_result.lab_test.description }}</p>
+                
+                {% if lab_result.lab_test.preparation %}
+                <h6>Patient Preparation</h6>
+                <p>{{ lab_result.lab_test.preparation }}</p>
+                {% endif %}
+                
+                {% if lab_result.lab_test.interpretation_guide %}
+                <h6>Interpretation Guide</h6>
+                <p>{{ lab_result.lab_test.interpretation_guide }}</p>
+                {% endif %}
+                
+                {% if lab_result.lab_test.limitations %}
+                <h6>Test Limitations</h6>
+                <p>{{ lab_result.lab_test.limitations }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Results Chart -->
+{% if chart_data %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Result Trend</h6>
+    </div>
+    <div class="card-body">
+        <div class="chart-area">
+            <canvas id="resultTrendChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('resultTrendChart').getContext('2d');
+        
+        // Extract data from backend
+        const chartData = {{ chart_data|safe }};
+        
+        // Define upper and lower bounds for normal range
+        const normalRangeLower = {{ normal_range_lower|default:0 }};
+        const normalRangeUpper = {{ normal_range_upper|default:100 }};
+        
+        // Create gradient for chart background
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(78, 115, 223, 0.2)');
+        gradient.addColorStop(1, 'rgba(78, 115, 223, 0)');
+        
+        // Create chart
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: '{{ lab_result.lab_test.name }} ({{ lab_result.lab_test.unit }})',
+                    data: chartData.values,
+                    backgroundColor: gradient,
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: chartData.point_colors,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1,
+                    pointRadius: 5,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const status = value < normalRangeLower || value > normalRangeUpper ? 'Abnormal' : 'Normal';
+                                return `Value: ${value} ${chartData.unit} (${status})`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        }
+                    }
+                },
+                annotation: {
+                    annotations: [{
+                        type: 'line',
+                        mode: 'horizontal',
+                        scaleID: 'y',
+                        value: normalRangeLower,
+                        borderColor: 'rgba(255, 99, 132, 0.5)',
+                        borderWidth: 1,
+                        label: {
+                            content: 'Lower Normal',
+                            enabled: true
+                        }
+                    },
+                    {
+                        type: 'line',
+                        mode: 'horizontal',
+                        scaleID: 'y',
+                        value: normalRangeUpper,
+                        borderColor: 'rgba(255, 99, 132, 0.5)',
+                        borderWidth: 1,
+                        label: {
+                            content: 'Upper Normal',
+                            enabled: true
+                        }
+                    }]
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

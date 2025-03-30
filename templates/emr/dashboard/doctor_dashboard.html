@@ -1,0 +1,256 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}Doctor Dashboard - Clinic EMR{% endblock %}
+
+{% block page_title %}Doctor Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Overview stats -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Today's Appointments</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ today_visits_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Pending Lab Results</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_lab_results_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-flask fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Patients Treated (Weekly)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ weekly_patients_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Active Hospitalizations</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_hospitalizations_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-hospital fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Appointments -->
+<div class="row">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Today's Appointments</h6>
+                <a href="{% url 'emr:visit_list' %}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if today_visits %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for visit in today_visits %}
+                            <tr>
+                                <td>{{ visit.visit_date|date:"H:i" }}</td>
+                                <td>{{ visit.patient }}</td>
+                                <td>{{ visit.reason|truncatechars:50 }}</td>
+                                <td>
+                                    {% if visit.status == 'scheduled' %}
+                                    <span class="badge bg-primary">Scheduled</span>
+                                    {% elif visit.status == 'in_progress' %}
+                                    <span class="badge bg-warning">In Progress</span>
+                                    {% elif visit.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif visit.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'emr:visit_detail' visit.id %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center my-4 py-4">
+                    <i class="fas fa-calendar-check fa-3x mb-3 text-muted"></i>
+                    <p>No appointments scheduled for today.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Lab Results</h6>
+                <a href="{% url 'emr:lab_order_list' %}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_lab_results %}
+                <div class="list-group">
+                    {% for result in recent_lab_results %}
+                    <a href="{% url 'emr:lab_result_detail' result.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ result.lab_test.name }}</h6>
+                            <small>{{ result.result_date|date:"M d, H:i" }}</small>
+                        </div>
+                        <p class="mb-1">Patient: {{ result.lab_order.patient }}</p>
+                        <p class="mb-1">
+                            Value: <strong>{{ result.value }} {{ result.lab_test.unit }}</strong>
+                            {% if result.is_abnormal %}
+                            <span class="badge bg-danger">Abnormal</span>
+                            {% endif %}
+                        </p>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center my-4 py-4">
+                    <i class="fas fa-flask fa-3x mb-3 text-muted"></i>
+                    <p>No recent lab results available.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Statistics and Quick Actions -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Patient Statistics</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="patientStatistics" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <a href="{% url 'emr:visit_create' %}" class="btn btn-primary btn-block p-3">
+                            <i class="fas fa-calendar-plus fa-lg mb-2"></i><br>
+                            New Visit
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{% url 'emr:lab_order_create' %}" class="btn btn-info btn-block p-3">
+                            <i class="fas fa-vial fa-lg mb-2"></i><br>
+                            New Lab Order
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{% url 'emr:prescription_create' %}" class="btn btn-success btn-block p-3">
+                            <i class="fas fa-prescription-bottle-alt fa-lg mb-2"></i><br>
+                            New Prescription
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{% url 'emr:patient_create' %}" class="btn btn-warning btn-block p-3">
+                            <i class="fas fa-user-plus fa-lg mb-2"></i><br>
+                            New Patient
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize chart for patient statistics
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctx = document.getElementById('patientStatistics').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Patients Seen',
+                    data: {{ patients_by_day|safe }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

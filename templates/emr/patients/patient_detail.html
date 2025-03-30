@@ -1,0 +1,318 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}{{ patient.user.first_name }} {{ patient.user.last_name }} - Patient Details{% endblock %}
+
+{% block page_title %}Patient: {{ patient.user.first_name }} {{ patient.user.last_name }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'emr:patient_edit' patient.id %}" class="btn btn-warning">
+        <i class="fas fa-edit me-1"></i> Edit
+    </a>
+    <a href="{% url 'emr:visit_create' %}?patient={{ patient.id }}" class="btn btn-primary">
+        <i class="fas fa-calendar-plus me-1"></i> New Visit
+    </a>
+    <a href="{% url 'emr:medical_report' patient.id %}" class="btn btn-success">
+        <i class="fas fa-file-medical me-1"></i> Generate Report
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Patient Info Card -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Patient Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <span class="h3 mb-0">{{ patient.user.first_name|first }}{{ patient.user.last_name|first }}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>{{ patient.user.first_name }} {{ patient.user.last_name }}</h5>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-envelope me-2"></i> {{ patient.user.email }}
+                    </p>
+                </div>
+                
+                <hr>
+                
+                <div class="row mb-2">
+                    <div class="col-5 font-weight-bold">Date of Birth:</div>
+                    <div class="col-7">{{ patient.date_of_birth|date:"F j, Y" }}</div>
+                </div>
+                
+                <div class="row mb-2">
+                    <div class="col-5 font-weight-bold">Age:</div>
+                    <div class="col-7">{{ patient.age }} years</div>
+                </div>
+                
+                <div class="row mb-2">
+                    <div class="col-5 font-weight-bold">Blood Group:</div>
+                    <div class="col-7">{{ patient.blood_group|default:"Not specified" }}</div>
+                </div>
+                
+                <div class="row mb-2">
+                    <div class="col-5 font-weight-bold">Emergency Contact:</div>
+                    <div class="col-7">{{ patient.emergency_contact|default:"Not specified" }}</div>
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <h6 class="font-weight-bold">Allergies</h6>
+                    {% if patient.allergies %}
+                        <p>{{ patient.allergies }}</p>
+                    {% else %}
+                        <p class="text-muted">No allergies recorded</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="font-weight-bold">Chronic Diseases</h6>
+                    {% if patient.chronic_diseases %}
+                        <p>{{ patient.chronic_diseases }}</p>
+                    {% else %}
+                        <p class="text-muted">No chronic diseases recorded</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Visit History Tab Card -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <ul class="nav nav-tabs card-header-tabs" id="patientTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="visits-tab" data-bs-toggle="tab" data-bs-target="#visits" type="button" role="tab" aria-controls="visits" aria-selected="true">Visits</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="diagnoses-tab" data-bs-toggle="tab" data-bs-target="#diagnoses" type="button" role="tab" aria-controls="diagnoses" aria-selected="false">Diagnoses</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="labs-tab" data-bs-toggle="tab" data-bs-target="#labs" type="button" role="tab" aria-controls="labs" aria-selected="false">Lab Results</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="prescriptions-tab" data-bs-toggle="tab" data-bs-target="#prescriptions" type="button" role="tab" aria-controls="prescriptions" aria-selected="false">Prescriptions</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="patientTabContent">
+                    <!-- Visits Tab -->
+                    <div class="tab-pane fade show active" id="visits" role="tabpanel" aria-labelledby="visits-tab">
+                        {% if visits %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Doctor</th>
+                                            <th>Department</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for visit in visits %}
+                                        <tr>
+                                            <td>{{ visit.visit_date|date:"M d, Y H:i" }}</td>
+                                            <td>{{ visit.doctor }}</td>
+                                            <td>{{ visit.department }}</td>
+                                            <td>{{ visit.reason|truncatechars:30 }}</td>
+                                            <td>
+                                                {% if visit.status == 'scheduled' %}
+                                                <span class="badge bg-primary">Scheduled</span>
+                                                {% elif visit.status == 'in_progress' %}
+                                                <span class="badge bg-warning">In Progress</span>
+                                                {% elif visit.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                                {% elif visit.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'emr:visit_detail' visit.id %}" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center my-4 py-4">
+                                <i class="fas fa-calendar-check fa-3x mb-3 text-muted"></i>
+                                <p>No visits recorded for this patient.</p>
+                                <a href="{% url 'emr:visit_create' %}?patient={{ patient.id }}" class="btn btn-primary">
+                                    <i class="fas fa-calendar-plus me-1"></i> Schedule Visit
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Diagnoses Tab -->
+                    <div class="tab-pane fade" id="diagnoses" role="tabpanel" aria-labelledby="diagnoses-tab">
+                        {% if diagnoses %}
+                            <div class="list-group">
+                                {% for diagnosis in diagnoses %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ diagnosis.diagnosis_name }}</h5>
+                                        <small>{{ diagnosis.diagnosis_date|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1"><strong>Code:</strong> {{ diagnosis.diagnosis_code }}</p>
+                                    <p class="mb-1"><strong>Doctor:</strong> {{ diagnosis.doctor }}</p>
+                                    <p class="mb-1">{{ diagnosis.description }}</p>
+                                    <div class="mt-2">
+                                        {% if diagnosis.is_chronic %}
+                                        <span class="badge bg-warning">Chronic</span>
+                                        {% endif %}
+                                        {% if diagnosis.is_primary %}
+                                        <span class="badge bg-info">Primary</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center my-4 py-4">
+                                <i class="fas fa-stethoscope fa-3x mb-3 text-muted"></i>
+                                <p>No diagnoses recorded for this patient.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Lab Results Tab -->
+                    <div class="tab-pane fade" id="labs" role="tabpanel" aria-labelledby="labs-tab">
+                        {% if lab_results %}
+                            <div class="accordion" id="labOrdersAccordion">
+                                {% for order in lab_orders %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ order.id }}">
+                                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ order.id }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ order.id }}">
+                                            <div class="d-flex justify-content-between w-100 me-3">
+                                                <span>Lab Order - {{ order.order_date|date:"M d, Y" }}</span>
+                                                <span class="badge {% if order.status == 'completed' %}bg-success{% elif order.status == 'in_progress' %}bg-warning{% else %}bg-primary{% endif %}">{{ order.get_status_display }}</span>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ order.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ order.id }}" data-bs-parent="#labOrdersAccordion">
+                                        <div class="accordion-body">
+                                            <p><strong>Doctor:</strong> {{ order.doctor }}</p>
+                                            <p><strong>Status:</strong> {{ order.get_status_display }}</p>
+                                            
+                                            {% if order.results.exists %}
+                                                <div class="table-responsive mt-3">
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Test</th>
+                                                                <th>Result</th>
+                                                                <th>Normal Range</th>
+                                                                <th>Status</th>
+                                                                <th>Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for result in order.results.all %}
+                                                            <tr {% if result.is_abnormal %}class="table-danger"{% endif %}>
+                                                                <td>{{ result.lab_test.name }}</td>
+                                                                <td><strong>{{ result.value }} {{ result.lab_test.unit }}</strong></td>
+                                                                <td>{{ result.lab_test.normal_range }}</td>
+                                                                <td>
+                                                                    {% if result.is_abnormal %}
+                                                                    <span class="badge bg-danger">Abnormal</span>
+                                                                    {% else %}
+                                                                    <span class="badge bg-success">Normal</span>
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td>{{ result.result_date|date:"M d, Y" }}</td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            {% else %}
+                                                <div class="alert alert-info mt-3">
+                                                    No results available for this order yet.
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center my-4 py-4">
+                                <i class="fas fa-flask fa-3x mb-3 text-muted"></i>
+                                <p>No lab results available for this patient.</p>
+                                <a href="{% url 'emr:lab_order_create' %}?patient={{ patient.id }}" class="btn btn-primary">
+                                    <i class="fas fa-vial me-1"></i> Order Lab Tests
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Prescriptions Tab -->
+                    <div class="tab-pane fade" id="prescriptions" role="tabpanel" aria-labelledby="prescriptions-tab">
+                        {% if prescriptions %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Medication</th>
+                                            <th>Dosage</th>
+                                            <th>Frequency</th>
+                                            <th>Start Date</th>
+                                            <th>Status</th>
+                                            <th>Doctor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for prescription in prescriptions %}
+                                        <tr>
+                                            <td>{{ prescription.medication.name }}</td>
+                                            <td>{{ prescription.dosage }}</td>
+                                            <td>{{ prescription.frequency }}</td>
+                                            <td>{{ prescription.start_date|date:"M d, Y" }}</td>
+                                            <td>
+                                                {% if prescription.status == 'active' %}
+                                                <span class="badge bg-success">Active</span>
+                                                {% elif prescription.status == 'completed' %}
+                                                <span class="badge bg-secondary">Completed</span>
+                                                {% elif prescription.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ prescription.doctor }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center my-4 py-4">
+                                <i class="fas fa-prescription-bottle fa-3x mb-3 text-muted"></i>
+                                <p>No prescriptions recorded for this patient.</p>
+                                <a href="{% url 'emr:prescription_create' %}?patient={{ patient.id }}" class="btn btn-primary">
+                                    <i class="fas fa-prescription me-1"></i> New Prescription
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

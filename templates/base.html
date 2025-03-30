@@ -43,11 +43,11 @@
                     {% if user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" 
-                               href="{% url 'profile' %}">Profile</a>
+                               href="{% url 'users:profile' %}">Profile</a>
                         </li>
                         {% if user.role == 'admin' %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'staff-registration' %}">Register Staff</a>
+                                <a class="nav-link" href="{% url 'users:staff-registration' %}">Register Staff</a>
                             </li>
                         {% endif %}
                     {% endif %}
@@ -55,16 +55,16 @@
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                            <a class="nav-link" href="{% url 'users:logout' %}">Logout</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'login' %}active{% endif %}" 
-                               href="{% url 'login' %}">Login</a>
+                               href="{% url 'users:login' %}">Login</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'register' %}active{% endif %}" 
-                               href="{% url 'register' %}">Register</a>
+                               href="{% url 'users:register' %}">Register</a>
                         </li>
                     {% endif %}
                 </ul>

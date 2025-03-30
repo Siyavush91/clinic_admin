@@ -100,7 +100,7 @@
                         <button type="submit" class="btn btn-primary">
                             {% if user.is_authenticated and user.role == 'admin' %}Register Staff Member{% else %}Register as Patient{% endif %}
                         </button>
-                        <a href="{% url 'login' %}" class="btn btn-outline-secondary">Already have an account? Login</a>
+                        <a href="{% url 'users:login' %}" class="btn btn-outline-secondary">Already have an account? Login</a>
                     </div>
                 </form>
             </div>

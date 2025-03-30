@@ -1,0 +1,260 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}Lab Results - Clinic EMR{% endblock %}
+
+{% block page_title %}Lab Results{% endblock %}
+
+{% block page_actions %}
+{% if user.role == 'doctor' or user.role == 'admin' %}
+<a href="{% url 'emr:lab_order_create' %}" class="btn btn-primary">
+    <i class="fas fa-vial me-1"></i> New Lab Order
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Lab Orders</h6>
+        
+        <!-- Filter and Search -->
+        <div class="d-flex">
+            <form method="get" class="d-flex">
+                <div class="input-group me-2">
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="ordered" {% if request.GET.status == 'ordered' %}selected{% endif %}>Ordered</option>
+                        <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="submit">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Search patient..." name="search" value="{{ request.GET.search }}">
+                    <button class="btn btn-outline-primary" type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        {% if lab_orders %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Patient</th>
+                        <th>Order Date</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Doctor</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in lab_orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>
+                            <a href="{% url 'emr:patient_detail' order.patient.id %}" class="text-decoration-none">
+                                {{ order.patient }}
+                            </a>
+                        </td>
+                        <td>{{ order.order_date|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if order.status == 'ordered' %}
+                            <span class="badge bg-primary">Ordered</span>
+                            {% elif order.status == 'in_progress' %}
+                            <span class="badge bg-warning">In Progress</span>
+                            {% elif order.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif order.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if order.priority == 'urgent' %}
+                            <span class="badge bg-danger">Urgent</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Routine</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.doctor }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'emr:lab_order_detail' order.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if user.role == 'doctor' or user.role == 'admin' %}
+                                    {% if order.status == 'ordered' or order.status == 'in_progress' %}
+                                    <a href="{% url 'emr:lab_result_create' %}?order={{ order.id }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if order.status == 'ordered' %}
+                                    <a href="{% url 'emr:lab_order_edit' order.id %}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="First">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Last">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-flask fa-4x mb-3 text-muted"></i>
+            {% if request.GET.search %}
+            <h5>No lab orders matching "{{ request.GET.search }}"</h5>
+            <p>Try a different search term or <a href="{% url 'emr:lab_order_list' %}">view all lab orders</a>.</p>
+            {% else %}
+            <h5>No lab orders in the system</h5>
+            {% if user.role == 'doctor' or user.role == 'admin' %}
+            <p>Get started by creating your first lab order.</p>
+            <a href="{% url 'emr:lab_order_create' %}" class="btn btn-primary mt-2">
+                <i class="fas fa-vial me-1"></i> New Lab Order
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Lab Results section -->
+{% if recent_results %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Recent Lab Results</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Test</th>
+                        <th>Patient</th>
+                        <th>Result</th>
+                        <th>Normal Range</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in recent_results %}
+                    <tr class="{% if result.is_abnormal %}table-danger{% endif %}">
+                        <td>{{ result.lab_test.name }}</td>
+                        <td>
+                            <a href="{% url 'emr:patient_detail' result.lab_order.patient.id %}" class="text-decoration-none">
+                                {{ result.lab_order.patient }}
+                            </a>
+                        </td>
+                        <td><strong>{{ result.value }} {{ result.lab_test.unit }}</strong></td>
+                        <td>{{ result.lab_test.normal_range }}</td>
+                        <td>
+                            {% if result.is_abnormal %}
+                            <span class="badge bg-danger">Abnormal</span>
+                            {% else %}
+                            <span class="badge bg-success">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ result.result_date|date:"M d, Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if user.role == 'doctor' or user.role == 'patient' %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to update lab results list when receiving real-time updates
+        window.updateLabResultsList = function(resultData) {
+            // This will handle WebSocket updates for lab results
+            // In a real implementation, this would refresh the list or add the new result
+            console.log('Received new lab result:', resultData);
+            
+            // Show notification
+            window.showNotification(`New lab result received: ${resultData.lab_test_name}`, 'info');
+            
+            // Reload the page to show the updated data
+            // In a production app, you'd want to handle this more elegantly
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        };
+        
+        // Subscribe to lab orders that are in progress
+        {% for order in lab_orders %}
+            {% if order.status == 'in_progress' %}
+                if (typeof window.subscribeToLabOrder === 'function') {
+                    window.subscribeToLabOrder({{ order.id }});
+                    console.log('Subscribed to lab order #{{ order.id }}');
+                }
+            {% endif %}
+        {% endfor %}
+    });
+</script>
+{% endif %}
+{% endblock %} 

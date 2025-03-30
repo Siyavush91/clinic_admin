@@ -17,11 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
-from apps.users.urls import api_urlpatterns
+from apps.users.urls import api_urlpatterns, template_urlpatterns
+from apps.emr.urls import api_urls, template_urls
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/users/login/', permanent=False), name='home'),
     path('admin/', admin.site.urls),
     path('api/auth/', include(api_urlpatterns)),
-    path('users/', include('apps.users.urls')),
+    path('api/emr/', include((api_urls, 'emr_api'), namespace='emr_api')),
+    path('users/', include((template_urlpatterns, 'users'), namespace='users')),
+    path('emr/', include((template_urls, 'emr'), namespace='emr')),
 ]
