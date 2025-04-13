@@ -9,6 +9,8 @@ from .models import (
 class PatientAdmin(admin.ModelAdmin):
     list_display = ('user', 'date_of_birth', 'blood_group')
     search_fields = ('user__first_name', 'user__last_name', 'user__email')
+    fields = ('user', 'date_of_birth', 'blood_group', 'allergies', 'chronic_diseases', 'emergency_contact')
+    raw_id_fields = ('user',)
 
 
 @admin.register(Doctor)

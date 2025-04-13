@@ -38,10 +38,13 @@ def create_user_profile(sender, instance, created, **kwargs):
         from apps.emr.models import Patient, Doctor
         
         if instance.role == 'patient':
+            if not instance.date_of_birth:
+                # If date_of_birth is not set, raise an error
+                raise ValueError("date_of_birth is required when creating a patient profile")
             # Create associated patient profile
             Patient.objects.create(
                 user=instance,
-                date_of_birth=instance.date_of_birth or None
+                date_of_birth=instance.date_of_birth
             )
         elif instance.role == 'doctor':
             # Create associated doctor profile

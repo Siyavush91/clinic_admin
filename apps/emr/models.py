@@ -127,16 +127,36 @@ class LabResult(models.Model):
     """Model for lab test results"""
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name='results')
     lab_test = models.ForeignKey(LabTest, on_delete=models.CASCADE, related_name='test_results')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='lab_results', null=True, blank=True)
+    ordering_doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='ordered_lab_results', null=True, blank=True)
+    performing_doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name='performed_lab_results')
     value = models.CharField(max_length=100)
     is_abnormal = models.BooleanField(default=False)
     result_date = models.DateTimeField(default=timezone.now)
-    performed_by = models.CharField(max_length=100, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return f"{self.lab_test.name}: {self.value} {self.lab_test.unit or ''}"
+    
+    def save(self, *args, **kwargs):
+        # Automatically set patient and ordering_doctor from lab_order if not provided
+        if not self.patient_id and self.lab_order_id:
+            self.patient = self.lab_order.patient
+        
+        if not self.ordering_doctor_id and self.lab_order_id:
+            self.ordering_doctor = self.lab_order.doctor
+        
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        ordering = ['-result_date']
+        indexes = [
+            models.Index(fields=['patient']),
+            models.Index(fields=['ordering_doctor']),
+            models.Index(fields=['performing_doctor']),
+        ]
 
 
 class Medication(models.Model):

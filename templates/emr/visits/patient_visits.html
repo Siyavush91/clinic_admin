@@ -1,0 +1,69 @@
+{% extends 'emr/base.html' %}
+
+{% block title %}My Visits | Clinic Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">My Visits</h6>
+        </div>
+        <div class="card-body">
+            {% if visits %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Doctor</th>
+                                <th>Department</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for visit in visits %}
+                                <tr>
+                                    <td>{{ visit.visit_date|date:"M d, Y H:i" }}</td>
+                                    <td>{{ visit.doctor }}</td>
+                                    <td>{{ visit.department|default:"--" }}</td>
+                                    <td>{{ visit.reason|truncatechars:50 }}</td>
+                                    <td>
+                                        {% if visit.status == 'scheduled' %}
+                                            <span class="badge badge-info">Scheduled</span>
+                                        {% elif visit.status == 'in_progress' %}
+                                            <span class="badge badge-warning">In Progress</span>
+                                        {% elif visit.status == 'completed' %}
+                                            <span class="badge badge-success">Completed</span>
+                                        {% elif visit.status == 'cancelled' %}
+                                            <span class="badge badge-danger">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'emr:visit_detail' visit.id %}" class="btn btn-sm btn-primary">View Details</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="lead text-muted">You don't have any medical visits yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    $(document).ready(function() {
+        $('#dataTable').DataTable({
+            "order": [[0, "desc"]]
+        });
+    });
+</script>
+{% endblock %} 

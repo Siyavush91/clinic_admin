@@ -18,6 +18,8 @@ router.register(r'prescriptions', views.PrescriptionViewSet)
 router.register(r'procedures', views.ProcedureViewSet)
 router.register(r'procedure-orders', views.ProcedureOrderViewSet)
 router.register(r'hospitalizations', views.HospitalizationViewSet)
+router.register(r'my-visits', views.PatientVisitViewSet, basename='patient-visits')
+router.register(r'my-lab-results', views.PatientLabResultViewSet, basename='patient-lab-results')
 
 # API URLs
 api_urls = [

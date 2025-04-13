@@ -8,6 +8,8 @@ from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils import timezone
+from django.contrib import messages
+from django.db import models
 
 from .models import (
     Patient, Doctor, Department, Visit, Diagnosis,
@@ -21,7 +23,8 @@ from .serializers import (
     LabResultSerializer, MedicationSerializer,
     PrescriptionListSerializer, PrescriptionDetailSerializer,
     ProcedureSerializer, ProcedureOrderListSerializer, ProcedureOrderDetailSerializer,
-    HospitalizationListSerializer, HospitalizationDetailSerializer
+    HospitalizationListSerializer, HospitalizationDetailSerializer,
+    PatientVisitSerializer, PatientLabResultSerializer
 )
 from .permissions import (
     IsDoctor, IsPatient, IsReceptionist, IsAdmin,
@@ -377,21 +380,19 @@ class HospitalizationViewSet(viewsets.ModelViewSet):
             # Patients can only see their own hospitalizations
             return Hospitalization.objects.filter(patient__user=user)
         elif user.role == 'doctor':
-            # Doctors can only see hospitalizations they are assigned to
+            # Doctors can only see hospitalizations where they are assigned
             return Hospitalization.objects.filter(doctor__user=user)
         return super().get_queryset()
-        
+    
     @action(detail=True, methods=['get'])
     def discharge_summary(self, request, pk=None):
         """
-        Generate a discharge summary for a hospitalization in PDF format
+        Generate a discharge summary in PDF format
         """
         hospitalization = self.get_object()
-        
-        # Check if patient has been discharged
         if hospitalization.status != 'discharged':
             return Response(
-                {"error": "Cannot generate discharge summary for patients who have not been discharged."},
+                {'error': 'Cannot generate discharge summary for patients who have not been discharged.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -399,11 +400,43 @@ class HospitalizationViewSet(viewsets.ModelViewSet):
         
         # Create the HttpResponse with PDF content
         response = HttpResponse(pdf, content_type='application/pdf')
-        patient = hospitalization.patient
-        filename = f"discharge_summary_{patient.user.last_name}_{patient.user.first_name}.pdf"
+        filename = f"discharge_summary_{hospitalization.patient.user.last_name}_{hospitalization.admission_date.strftime('%Y%m%d')}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response
+
+
+class PatientVisitViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for returning patient's own visits
+    """
+    serializer_class = PatientVisitSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        try:
+            patient = self.request.user.patient_profile
+            return Visit.objects.filter(patient=patient).order_by('-visit_date')
+        except:
+            return Visit.objects.none()
+
+
+class PatientLabResultViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for returning patient's own lab results
+    """
+    serializer_class = PatientLabResultSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        try:
+            patient = self.request.user.patient_profile
+            # Query both direct and indirect relationships to find all lab results
+            return LabResult.objects.filter(
+                models.Q(patient=patient) | models.Q(lab_order__patient=patient)
+            ).select_related('lab_test', 'lab_order', 'ordering_doctor').order_by('-result_date')
+        except:
+            return LabResult.objects.none()
 
 # Template Views
 @login_required
@@ -721,24 +754,21 @@ def visit_edit_view(request, pk):
 
 @login_required
 def patient_visits_view(request):
-    """View for a patient's visits"""
-    user = request.user
-    
-    if user.role != 'patient':
+    """View for patients to see their visits"""
+    # Only show visits for the current patient
+    if request.user.role == 'patient':
+        try:
+            patient = request.user.patient_profile
+            visits = Visit.objects.filter(patient=patient).order_by('-visit_date')
+            return render(request, 'emr/visits/patient_visits.html', {
+                'visits': visits
+            })
+        except:
+            messages.error(request, "Patient profile not found")
+            return redirect('emr:dashboard')
+    else:
+        messages.error(request, "Only patients can access this page")
         return redirect('emr:dashboard')
-    
-    try:
-        patient = Patient.objects.get(user=user)
-        visits = Visit.objects.filter(patient=patient).order_by('-visit_date')
-        
-        context = {
-            'visits': visits,
-            'patient': patient,
-            'active_menu': 'my_visits',
-        }
-        return render(request, 'emr/visits/patient_visits.html', context)
-    except Patient.DoesNotExist:
-        return redirect('users:profile')
 
 # Lab views (simplified - similar pattern for other views)
 @login_required
@@ -864,24 +894,26 @@ def lab_result_edit_view(request, pk):
 
 @login_required
 def patient_lab_results_view(request):
-    """View for a patient's lab results"""
-    user = request.user
-    
-    if user.role != 'patient':
+    """View for patients to see their lab results"""
+    # Only show lab results for the current patient
+    if request.user.role == 'patient':
+        try:
+            patient = request.user.patient_profile
+            # Query both the direct relationship and the indirect relationship
+            # to ensure we find all lab results
+            lab_results = LabResult.objects.filter(
+                models.Q(patient=patient) | models.Q(lab_order__patient=patient)
+            ).select_related('lab_test', 'lab_order').order_by('-result_date')
+            
+            return render(request, 'emr/labs/patient_lab_results.html', {
+                'lab_results': lab_results
+            })
+        except Exception as e:
+            messages.error(request, f"Error retrieving lab results: {str(e)}")
+            return redirect('emr:dashboard')
+    else:
+        messages.error(request, "Only patients can access this page")
         return redirect('emr:dashboard')
-    
-    try:
-        patient = Patient.objects.get(user=user)
-        lab_orders = LabOrder.objects.filter(patient=patient).order_by('-order_date')
-        
-        context = {
-            'lab_orders': lab_orders,
-            'patient': patient,
-            'active_menu': 'my_labs',
-        }
-        return render(request, 'emr/labs/patient_lab_results.html', context)
-    except Patient.DoesNotExist:
-        return redirect('users:profile')
 
 # Add placeholder functions for the remaining views
 # Each view should follow similar patterns to those above

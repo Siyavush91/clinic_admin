@@ -217,4 +217,45 @@ class HospitalizationDetailSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Hospitalization
-        fields = '__all__' 
+        fields = '__all__'
+
+
+class PatientVisitSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Visit
+        fields = [
+            'id', 'visit_date', 'reason', 'status', 
+            'doctor_name', 'department_name', 'created_at'
+        ]
+    
+    def get_doctor_name(self, obj):
+        return f"Dr. {obj.doctor.user.first_name} {obj.doctor.user.last_name}"
+    
+    def get_department_name(self, obj):
+        return obj.department.name if obj.department else None
+
+
+class PatientLabResultSerializer(serializers.ModelSerializer):
+    test_name = serializers.CharField(source='lab_test.name')
+    unit = serializers.CharField(source='lab_test.unit', allow_null=True, default='')
+    normal_range = serializers.CharField(source='lab_test.normal_range', allow_null=True, default='')
+    order_date = serializers.DateTimeField(source='lab_order.order_date', allow_null=True)
+    ordering_doctor_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LabResult
+        fields = [
+            'id', 'test_name', 'value', 'is_abnormal', 
+            'result_date', 'unit', 'normal_range', 'order_date',
+            'ordering_doctor_name'
+        ]
+    
+    def get_ordering_doctor_name(self, obj):
+        if obj.ordering_doctor:
+            return f"Dr. {obj.ordering_doctor.user.first_name} {obj.ordering_doctor.user.last_name}"
+        elif obj.lab_order and obj.lab_order.doctor:
+            return f"Dr. {obj.lab_order.doctor.user.first_name} {obj.lab_order.doctor.user.last_name}"
+        return None 

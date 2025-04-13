@@ -20,6 +20,12 @@ wheels/
 .installed.cfg
 *.egg
 
+# Byte-compiled files
+**/__pycache__/
+**/*.py[cod]
+**/*.so
+**/.pytest_cache/
+
 # Django
 *.log
 local_settings.py
@@ -167,3 +173,15 @@ static/
 # Logs
 *.log
 logs/
+
+# Migration history - exceptions
+!*/migrations/__init__.py
+
+# Scripts
+populate_*.py
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
